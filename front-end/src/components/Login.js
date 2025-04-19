@@ -1,75 +1,143 @@
 // src/components/Login.js
 import React, { useState } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-import { Container, TextField, Button, Typography, Box } from '@mui/material';
-import api from '../api';
+import { Link, useNavigate } from 'react-router-dom';
+import { login, requestPasswordReset } from '../services/auth';
+import './Login.css';
 
-const Login = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+const Login = ({ onLogin }) => {
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const navigate = useNavigate();
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError(null);
+    setLoading(true);
+
     try {
-      // 向后端请求获取 JWT Token；确保后端服务器已启动并访问地址正确
-      const response = await api.post('/token/', { username, password });
-      
-      // 将 token 保存到 localStorage（或你喜欢的状态管理中）
-      localStorage.setItem('access_token', response.data.access);
-      localStorage.setItem('refresh_token', response.data.refresh);
-      // 设置默认 axios 请求头，后续请求自动带上 token
-      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
-      // 登录成功后跳转到 Dashboard 或主页面（你后续可创建 Dashboard 页面）
-      navigate('/dashboard');
+      await login(formData.email, formData.password);
+      onLogin();
     } catch (err) {
-      setError('登录失败，请检查用户名或密码');
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      await requestPasswordReset(formData.email);
+      setError('Password reset instructions have been sent to your email');
+      setShowForgotPassword(false);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDevLogin = () => {
+    // Simulate successful login by setting a mock token
+    localStorage.setItem('auth_token', 'dev_token');
+    onLogin();
+  };
+
   return (
-    <Container maxWidth="sm">
-      <Box sx={{ mt: 8, textAlign: 'center' }}>
-        <Typography variant="h4" gutterBottom>
-          登录
-        </Typography>
-        <form onSubmit={handleLogin}>
-          <TextField
-            label="用户名"
-            variant="outlined"
-            fullWidth
-            margin="normal"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+    <div className="login-container">
+      <form onSubmit={showForgotPassword ? handleForgotPassword : handleLogin} className="login-form">
+        <h2>{showForgotPassword ? 'Reset Password' : 'Login'}</h2>
+        {error && <div className="error-message">{error}</div>}
+        
+        <div className="form-group">
+          <label htmlFor="email">Email</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            required
           />
-          <TextField
-            label="密码"
-            type="password"
-            variant="outlined"
-            fullWidth
-            margin="normal"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          {error && (
-            <Typography color="error" variant="body2">
-              {error}
-            </Typography>
-          )}
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            fullWidth
-            sx={{ mt: 2 }}
+        </div>
+
+        {!showForgotPassword && (
+          <div className="form-group">
+            <label htmlFor="password">Password</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+            />
+          </div>
+        )}
+
+        <button type="submit" disabled={loading} className="login-button">
+          {loading
+            ? showForgotPassword
+              ? 'Sending Reset Instructions...'
+              : 'Logging in...'
+            : showForgotPassword
+              ? 'Send Reset Instructions'
+              : 'Login'}
+        </button>
+
+        {!showForgotPassword && (
+          <button
+            type="button"
+            onClick={handleDevLogin}
+            className="dev-login-button"
           >
-            登录
-          </Button>
-        </form>
-      </Box>
-    </Container>
+            Development Login (Bypass Auth)
+          </button>
+        )}
+
+        {!showForgotPassword ? (
+          <p className="forgot-password">
+            <button
+              type="button"
+              onClick={() => setShowForgotPassword(true)}
+              className="forgot-password-link"
+            >
+              Forgot Password?
+            </button>
+          </p>
+        ) : (
+          <p className="back-to-login">
+            <button
+              type="button"
+              onClick={() => setShowForgotPassword(false)}
+              className="back-to-login-link"
+            >
+              Back to Login
+            </button>
+          </p>
+        )}
+
+        <p className="signup-link">
+          Don't have an account? <Link to="/signup">Sign up</Link>
+        </p>
+      </form>
+    </div>
   );
 };
 

@@ -1,0 +1,52 @@
+.search-history {
+  margin-top: 2rem;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.search-history h2 {
+  font-size: 1.2rem;
+  color: #333;
+  margin-bottom: 1rem;
+}
+
+.search-history ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.search-history li {
+  padding: 0.5rem;
+  border-bottom: 1px solid #dee2e6;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.search-history li:hover {
+  background-color: #e9ecef;
+}
+
+.search-history .search-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.search-history .search-query {
+  font-weight: 500;
+  color: #495057;
+}
+
+.search-history .search-meta {
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+.search-history .no-history {
+  color: #6c757d;
+  font-style: italic;
+  padding: 1rem;
+  text-align: center;
+} 

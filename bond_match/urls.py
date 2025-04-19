@@ -16,21 +16,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-
-    # JWT 获取和刷新 token 的接口
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-
-    # 包含应用的 API 路由，例如 securities 应用
     path('api/', include('securities.urls')),
-
-    path('api/wind/', include('securities.urls_wind')),  # 新增Wind数据查询API路径
-]
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
