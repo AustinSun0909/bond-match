@@ -1,86 +1,126 @@
-# Bond Match - 债券匹配系统
+# 债券匹配系统 (Bond Matching System)
 
-一个基于 Django 和 React 的债券匹配系统，帮助用户快速找到潜在的债券买家。
-
-## 功能特点
-
-- 🔍 债券代码搜索
-- 📊 潜在买家匹配
-- 👥 基金经理和交易员联系方式管理
-- 📝 搜索历史记录
-- 🔒 用户认证系统
+一个全栈应用，用于债券信息搜索、匹配和分析。
 
 ## 技术栈
 
 ### 后端
-- Python 3.x
-- Django
-- Django REST Framework
-- PostgreSQL
-- Django CORS Headers
+- Django + Django REST Framework
+- PostgreSQL 数据库
+- JWT 认证
 
 ### 前端
 - React
+- React Router
 - Axios
-- Tailwind CSS
 
-## 安装指南
-
-### 前提条件
-- Python 3.x
-- Node.js
-- PostgreSQL
+## 安装说明
 
 ### 后端设置
 
-1. 创建并激活虚拟环境：
-```bash
-python -m venv venv
-.\venv\Scripts\activate  # Windows
-source venv/bin/activate  # Linux/Mac
-```
+1. 确保您已安装 Python 3.8+ 和 PostgreSQL
 
-2. 安装依赖：
-```bash
-pip install -r requirements.txt
-```
+2. 创建并激活虚拟环境（可选）
+   ```
+   python -m venv venv
+   # Windows
+   venv\Scripts\activate
+   # Linux/Mac
+   source venv/bin/activate
+   ```
 
-3. 配置数据库：
-- 创建 PostgreSQL 数据库
-- 更新 `settings.py` 中的数据库配置
+3. 安装依赖
+   ```
+   pip install -r requirements.txt
+   ```
 
-4. 运行迁移：
-```bash
-python manage.py makemigrations
-python manage.py migrate
-```
+4. 创建 PostgreSQL 数据库
+   ```
+   # 登录 PostgreSQL
+   psql -U postgres
+   
+   # 创建数据库
+   CREATE DATABASE bond_match;
+   
+   # 退出
+   \q
+   ```
 
-5. 创建超级用户：
-```bash
-python manage.py createsuperuser
-```
+5. 配置数据库
+   编辑 `bond_match/settings.py` 中的 `DATABASES` 配置，确保用户名和密码正确。
 
-6. 启动开发服务器：
-```bash
-python manage.py runserver
-```
+6. 应用数据库迁移
+   ```
+   python manage.py makemigrations
+   python manage.py migrate
+   ```
+
+7. 创建超级用户
+   ```
+   python manage.py createsuperuser
+   ```
 
 ### 前端设置
 
-1. 进入前端目录：
-```bash
-cd front-end
+1. 确保已安装 Node.js 和 npm
+
+2. 进入前端目录
+   ```
+   cd front-end
+   ```
+
+3. 安装依赖
+   ```
+   npm install
+   ```
+
+## 运行应用
+
+### 开发模式
+
+1. 启动后端服务器
+   ```
+   python manage.py runserver
+   ```
+
+2. 启动前端开发服务器
+   ```
+   cd front-end
+   npm start
+   ```
+
+### 使用脚本启动（Windows）
+
+```
+# PowerShell
+.\start_dev.ps1
 ```
 
-2. 安装依赖：
-```bash
-npm install
-```
+## 系统功能
 
-3. 启动开发服务器：
-```bash
-npm start
-```
+- 用户注册和登录
+- 密码重置
+- 债券搜索
+- 债券详情查看
+- 债券匹配推荐
+- 搜索历史记录
+
+## API 端点
+
+### 认证
+- `/api/signup/` - 用户注册
+- `/api/login/` - 用户登录
+- `/api/token/` - 获取 JWT 令牌
+- `/api/token/refresh/` - 刷新 JWT 令牌
+- `/api/forgot-password/` - 请求密码重置
+- `/api/reset-password/` - 重置密码
+
+### 债券功能
+- `/api/bonds/search/` - 搜索债券
+- `/api/bonds/<bond_code>/` - 获取债券详情
+- `/api/bonds/match/` - 匹配债券
+- `/api/issuers/` - 获取发行人列表
+- `/api/search-history/` - 获取用户搜索历史
 
 ## 项目结构
 
@@ -98,12 +138,6 @@ bond-match/
 │   └── package.json     # 前端依赖
 └── requirements.txt     # Python 依赖
 ```
-
-## API 端点
-
-- `POST /api/bond/match/` - 债券匹配搜索
-- `GET /api/search/history/` - 获取搜索历史
-- `GET /api/issuers/` - 获取发行人列表
 
 ## 使用示例
 

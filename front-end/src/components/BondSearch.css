@@ -1,120 +1,199 @@
 .bond-search {
+  padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
 }
 
 .header-actions {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 1rem;
+  margin-bottom: 20px;
 }
 
 .logout-button {
-  padding: 0.5rem 1rem;
   background-color: #dc3545;
   color: white;
   border: none;
+  padding: 8px 16px;
   border-radius: 4px;
-  font-size: 0.9rem;
   cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.logout-button:hover {
-  background-color: #c82333;
 }
 
 .search-form {
-  margin-bottom: 2rem;
+  margin-bottom: 20px;
 }
 
 .search-input-group {
   display: flex;
-  gap: 1rem;
+  gap: 10px;
 }
 
 .search-input {
   flex: 1;
-  padding: 0.75rem;
+  padding: 10px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-size: 1rem;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  font-size: 16px;
 }
 
 .search-button {
-  padding: 0.75rem 1.5rem;
   background-color: #007bff;
   color: white;
   border: none;
+  padding: 10px 20px;
   border-radius: 4px;
-  font-size: 1rem;
   cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.search-button:hover {
-  background-color: #0056b3;
 }
 
 .search-button:disabled {
-  background-color: #ccc;
+  background-color: #cccccc;
   cursor: not-allowed;
 }
 
 .error-message {
+  color: #dc3545;
+  margin: 10px 0;
+  padding: 10px;
   background-color: #f8d7da;
-  color: #721c24;
-  padding: 0.75rem;
   border-radius: 4px;
-  margin-bottom: 1rem;
-  text-align: center;
 }
 
-.search-results {
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  padding: 1.5rem;
-  margin-bottom: 2rem;
+.search-results, .match-results {
+  margin-top: 20px;
 }
 
-.search-results h2 {
+.search-results h2, .match-results h2 {
+  margin-bottom: 10px;
   color: #333;
-  margin-bottom: 1rem;
-  font-size: 1.5rem;
 }
 
 .results-table {
   width: 100%;
   border-collapse: collapse;
+  margin-bottom: 20px;
 }
 
 .results-table th,
 .results-table td {
-  padding: 0.75rem;
+  border: 1px solid #ddd;
+  padding: 8px;
   text-align: left;
-  border-bottom: 1px solid #ddd;
 }
 
 .results-table th {
-  background-color: #f8f9fa;
-  font-weight: 600;
-  color: #333;
+  background-color: #f5f5f5;
+  font-weight: bold;
 }
 
-.results-table tr:hover {
-  background-color: #f8f9fa;
+.results-table tr:nth-child(even) {
+  background-color: #f9f9f9;
 }
 
-.results-table td {
-  color: #666;
+.no-results {
+  margin: 20px 0;
+  padding: 20px;
+  background-color: #f8f9fa;
+  text-align: center;
+  border-radius: 4px;
+}
+
+/* Match button styles */
+.match-button {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.match-button:hover {
+  background-color: #218838;
+}
+
+.match-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* Match results styles */
+.match-results {
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 30px;
+}
+
+.bond-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+  background-color: white;
+  padding: 15px;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.bond-info p {
+  margin: 5px 0;
+}
+
+.potential-buyers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.buyer-card {
+  background-color: white;
+  padding: 20px;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e9ecef;
+}
+
+.buyer-card h3 {
+  color: #007bff;
+  margin-top: 0;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.primary-contact, .all-contacts {
+  margin-top: 15px;
+}
+
+.primary-contact h4, .all-contacts h4 {
+  color: #495057;
+  margin-bottom: 10px;
+}
+
+.contacts-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.contacts-table th,
+.contacts-table td {
+  border: 1px solid #ddd;
+  padding: 6px;
+  text-align: left;
+}
+
+.contacts-table th {
+  background-color: #f5f5f5;
+}
+
+.no-buyers {
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 15px;
+  border-radius: 4px;
+  margin-top: 10px;
 }
 
 .search-history {
@@ -147,4 +226,10 @@
 .timestamp {
   color: #666;
   font-size: 0.9em;
+}
+
+.no-results p {
+  color: #6c757d;
+  font-size: 16px;
+  margin: 0;
 } 

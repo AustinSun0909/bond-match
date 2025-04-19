@@ -1,18 +1,19 @@
 // src/components/Login.js
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { login, requestPasswordReset } from '../services/auth';
+import { login } from '../services/auth';
+import { useAuth } from '../context/AuthContext';
 import './Login.css';
 
-const Login = ({ onLogin }) => {
+const Login = () => {
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: ''
   });
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const navigate = useNavigate();
+  const { login: authLogin } = useAuth();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -28,113 +29,56 @@ const Login = ({ onLogin }) => {
     setLoading(true);
 
     try {
-      await login(formData.email, formData.password);
-      onLogin();
+      await login(formData.username, formData.password);
+      authLogin(); // Update global auth state
+      navigate('/');
     } catch (err) {
-      setError(err.message);
+      setError('用户名或密码错误');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleForgotPassword = async (e) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    try {
-      await requestPasswordReset(formData.email);
-      setError('Password reset instructions have been sent to your email');
-      setShowForgotPassword(false);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDevLogin = () => {
-    // Simulate successful login by setting a mock token
-    localStorage.setItem('auth_token', 'dev_token');
-    onLogin();
   };
 
   return (
     <div className="login-container">
-      <form onSubmit={showForgotPassword ? handleForgotPassword : handleLogin} className="login-form">
-        <h2>{showForgotPassword ? 'Reset Password' : 'Login'}</h2>
+      <form onSubmit={handleLogin} className="login-form">
+        <h2>登录</h2>
         {error && <div className="error-message">{error}</div>}
         
         <div className="form-group">
-          <label htmlFor="email">Email</label>
+          <label htmlFor="username">用户名</label>
           <input
-            type="email"
-            id="email"
-            name="email"
-            value={formData.email}
+            type="text"
+            id="username"
+            name="username"
+            value={formData.username}
             onChange={handleChange}
             required
           />
         </div>
 
-        {!showForgotPassword && (
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-            />
-          </div>
-        )}
+        <div className="form-group">
+          <label htmlFor="password">密码</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            required
+          />
+        </div>
 
         <button type="submit" disabled={loading} className="login-button">
-          {loading
-            ? showForgotPassword
-              ? 'Sending Reset Instructions...'
-              : 'Logging in...'
-            : showForgotPassword
-              ? 'Send Reset Instructions'
-              : 'Login'}
+          {loading ? '登录中...' : '登录'}
         </button>
 
-        {!showForgotPassword && (
-          <button
-            type="button"
-            onClick={handleDevLogin}
-            className="dev-login-button"
-          >
-            Development Login (Bypass Auth)
-          </button>
-        )}
-
-        {!showForgotPassword ? (
-          <p className="forgot-password">
-            <button
-              type="button"
-              onClick={() => setShowForgotPassword(true)}
-              className="forgot-password-link"
-            >
-              Forgot Password?
-            </button>
-          </p>
-        ) : (
-          <p className="back-to-login">
-            <button
-              type="button"
-              onClick={() => setShowForgotPassword(false)}
-              className="back-to-login-link"
-            >
-              Back to Login
-            </button>
-          </p>
-        )}
+        <p className="forgot-password">
+          <Link to="/forgot-password">忘记密码？</Link>
+        </p>
 
         <p className="signup-link">
-          Don't have an account? <Link to="/signup">Sign up</Link>
+          没有账户？ <Link to="/signup">注册</Link>
         </p>
       </form>
     </div>

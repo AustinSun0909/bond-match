@@ -39,6 +39,7 @@ class FundCompany(models.Model):
     company_type = models.CharField(max_length=20, choices=COMPANY_TYPES, default='FUND')
     contact_info = models.CharField(max_length=255, blank=True, null=True)
     other_info = models.TextField(blank=True, null=True)
+    aum = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal('0.00'), help_text='Assets under management')
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -77,6 +78,7 @@ class BondHolding(models.Model):
     purchase_date = models.DateField(default=timezone.now)
     remaining_term_at_purchase = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal('0.00'))
     holding_amount = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal('0.00'))
+    holding_percentage = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal('0.00'), help_text='Percentage of fund assets')
     is_current_holding = models.BooleanField(default=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)

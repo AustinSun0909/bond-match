@@ -1,11 +1,24 @@
 # securities/urls.py
 from django.urls import path
-from . import views
+from .views import (
+    SignUpView, LoginView, ForgotPasswordView, ResetPasswordView,
+    BondSearchView, IssuerListView, BondDetailView, BondMatchView,
+    SearchHistoryView
+)
 
 urlpatterns = [
-    path('issuers/', views.IssuerListView.as_view(), name='issuer-list'),
-    path('bond/match/', views.BondMatchView.as_view(), name='bond-match'),
-    path('search/history/', views.SearchHistoryView.as_view(), name='search-history'),
-    path('bond/bycode/', views.BondInfoByCodeView.as_view(), name='bond-info-bycode'),
-    path('bond/byabbr/', views.BondInfoByAbbrView.as_view(), name='bond-info-byabbr'),
+    # Authentication endpoints
+    path('signup/', SignUpView.as_view(), name='signup'),
+    path('login/', LoginView.as_view(), name='login'),
+    path('forgot-password/', ForgotPasswordView.as_view(), name='forgot_password'),
+    path('reset-password/', ResetPasswordView.as_view(), name='reset_password'),
+    
+    # Bond-related endpoints
+    path('bonds/search/', BondSearchView.as_view(), name='bond_search'),
+    path('bonds/match/', BondMatchView.as_view(), name='bond_match'),
+    path('issuers/', IssuerListView.as_view(), name='issuer_list'),
+    path('bonds/<str:bond_code>/', BondDetailView.as_view(), name='bond_detail'),
+    
+    # User history
+    path('search-history/', SearchHistoryView.as_view(), name='search_history'),
 ]
