@@ -112,14 +112,6 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/bonds/search"
-        element={
-          <ProtectedRoute>
-            <BondSearch />
-          </ProtectedRoute>
-        }
-      />
       
       {/* Redirect routes */}
       <Route path="/" element={<Navigate to={isLoggedIn ? "/dashboard" : "/login"} replace />} />

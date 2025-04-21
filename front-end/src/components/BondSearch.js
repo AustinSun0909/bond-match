@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SearchHistory from './SearchHistory.jsx';
 import { useAuth } from '../context/AuthContext';
 import { searchBonds, getSearchHistory, matchBond } from '../services/bondService';
 import './BondSearch.css';
 
-const BondSearch = () => {
+const BondSearch = ({ showHistory = false }) => {
   const navigate = useNavigate();
   const { logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
@@ -16,6 +16,7 @@ const BondSearch = () => {
   const [matchResults, setMatchResults] = useState(null);
   const [matchLoading, setMatchLoading] = useState(false);
   const [matchError, setMatchError] = useState(null);
+  const searchHistoryRef = useRef(null);
 
   const handleLogout = () => {
     console.log('BondSearch: Logout button clicked');
@@ -23,21 +24,17 @@ const BondSearch = () => {
     logout();
   };
 
-  // Load search history from API
-  useEffect(() => {
-    const fetchSearchHistory = async () => {
-      try {
-        const history = await getSearchHistory();
-        setSearchHistory(history);
-      } catch (err) {
-        console.error('Error fetching search history:', err);
-      }
-    };
+  const handleReturn = () => {
+    navigate('/dashboard');
+  };
 
-    fetchSearchHistory();
-  }, []);
-
+  // Define handleSearch function first
   const handleSearch = async (query = searchQuery) => {
+    if (!query) {
+      setError('请输入搜索内容');
+      return;
+    }
+    
     if (!query.trim() || query.trim().length < 2) {
       setError('请输入至少2个字符进行搜索');
       return;
@@ -52,17 +49,47 @@ const BondSearch = () => {
       const results = await searchBonds(query.trim());
       setSearchResults(results);
 
+      // Get bond name from the first result if available
+      let bondName = '';
+      if (results.length > 0) {
+        bondName = results[0].bond_name || '';
+      }
+
       // Add to search history locally (will also be saved on backend)
       const newSearch = {
         query,
+        bondName,
         timestamp: new Date().toISOString(),
         resultCount: results.length
       };
 
+      // Update state
       setSearchHistory(prev => {
-        const newHistory = [newSearch, ...prev];
-        // Keep only the last 50 searches
-        return newHistory.slice(0, 50);
+        // Check if the same query already exists
+        const existingIndex = prev.findIndex(item => item.query === query);
+        
+        let newHistory;
+        if (existingIndex !== -1) {
+          // Update existing search with new timestamp and details
+          newHistory = [...prev];
+          newHistory[existingIndex] = {
+            ...newHistory[existingIndex],
+            timestamp: new Date().toISOString(),
+            resultCount: results.length,
+            bondName
+          };
+        } else {
+          // Add new search
+          newHistory = [newSearch, ...prev];
+        }
+        
+        // Keep only the last 50 searches in state
+        const updatedHistory = newHistory.slice(0, 50);
+        
+        // Also save to localStorage
+        saveSearchHistoryToLocalStorage(updatedHistory);
+        
+        return updatedHistory;
       });
     } catch (err) {
       setError(err.message || '搜索失败，请稍后再试');
@@ -72,6 +99,103 @@ const BondSearch = () => {
     }
   };
 
+  // Helper function to save search history to localStorage
+  const saveSearchHistoryToLocalStorage = (history) => {
+    try {
+      localStorage.setItem('bondSearchHistory', JSON.stringify(history));
+    } catch (error) {
+      console.error('Error saving search history to localStorage:', error);
+    }
+  };
+
+  // Helper function to load search history from localStorage
+  const loadSearchHistoryFromLocalStorage = () => {
+    try {
+      const savedHistory = localStorage.getItem('bondSearchHistory');
+      return savedHistory ? JSON.parse(savedHistory) : [];
+    } catch (error) {
+      console.error('Error loading search history from localStorage:', error);
+      return [];
+    }
+  };
+
+  // Load search history from API and localStorage
+  useEffect(() => {
+    const fetchSearchHistory = async () => {
+      try {
+        // First, load from localStorage
+        const localHistory = loadSearchHistoryFromLocalStorage();
+        
+        // Then try to get from API
+        let apiHistory = [];
+        try {
+          apiHistory = await getSearchHistory();
+          apiHistory = Array.isArray(apiHistory) ? apiHistory : [];
+        } catch (err) {
+          console.error('Error fetching search history from API:', err);
+        }
+        
+        // Merge histories (prioritize newer searches)
+        const mergedHistory = mergeSearchHistories(localHistory, apiHistory);
+        
+        // Update state and localStorage
+        setSearchHistory(mergedHistory);
+        saveSearchHistoryToLocalStorage(mergedHistory);
+      } catch (err) {
+        console.error('Error managing search history:', err);
+        setSearchHistory([]);
+      }
+    };
+
+    fetchSearchHistory();
+  }, []);
+
+  // Helper function to merge search histories from different sources
+  const mergeSearchHistories = (localHistory, apiHistory) => {
+    // Create a map using just the query as a key (to ensure uniqueness)
+    const historyMap = new Map();
+    
+    // Add all items to the map (newer timestamp will overwrite older for the same query)
+    [...localHistory, ...apiHistory].forEach(item => {
+      if (item && item.query && item.timestamp) {
+        const existingItem = historyMap.get(item.query);
+        
+        // Only replace if this item is newer or if no existing item
+        if (!existingItem || new Date(item.timestamp) > new Date(existingItem.timestamp)) {
+          historyMap.set(item.query, item);
+        }
+      }
+    });
+    
+    // Convert back to array and sort by timestamp (newest first)
+    const mergedHistory = Array.from(historyMap.values()).sort((a, b) => {
+      return new Date(b.timestamp) - new Date(a.timestamp);
+    });
+    
+    // Limit to 20 entries
+    return mergedHistory.slice(0, 20);
+  };
+
+  // Scroll to search history if showHistory is true
+  useEffect(() => {
+    if (showHistory && searchHistoryRef.current) {
+      searchHistoryRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [showHistory, searchHistory]);
+
+  // Check for pending searches (from search history navigation)
+  useEffect(() => {
+    const pendingSearch = sessionStorage.getItem('pendingSearch');
+    if (pendingSearch) {
+      // Clear the pending search from session storage
+      sessionStorage.removeItem('pendingSearch');
+      // Set the search query and perform the search
+      setSearchQuery(pendingSearch);
+      handleSearch(pendingSearch);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);  // We intentionally only want this to run once on mount
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -80,8 +204,21 @@ const BondSearch = () => {
   };
 
   const handleHistorySearch = (search) => {
-    setSearchQuery(search.query);
-    handleSearch(search.query);
+    if (!search || typeof search !== 'object' || !search.query) {
+      console.error('Invalid search item:', search);
+      return;
+    }
+    
+    // If we're on the search-history page, navigate to the search page
+    if (showHistory) {
+      navigate('/bonds/search');
+      // We'll store the search query to be executed after navigation
+      sessionStorage.setItem('pendingSearch', search.query);
+    } else {
+      // We're already on the search page, so just perform the search
+      setSearchQuery(search.query);
+      handleSearch(search.query);
+    }
   };
 
   const handleMatchBond = async (bondCode) => {
@@ -102,6 +239,9 @@ const BondSearch = () => {
   return (
     <div className="bond-search">
       <div className="header-actions">
+        <button onClick={handleReturn} className="return-button">
+          返回主页
+        </button>
         <button onClick={handleLogout} className="logout-button">
           退出登录
         </button>
@@ -236,10 +376,12 @@ const BondSearch = () => {
         </div>
       )}
 
-      <SearchHistory
-        searches={searchHistory}
-        onSearch={handleHistorySearch}
-      />
+      <div ref={searchHistoryRef}>
+        <SearchHistory
+          searches={searchHistory}
+          onSearch={handleHistorySearch}
+        />
+      </div>
     </div>
   );
 };

@@ -132,42 +132,96 @@ class BondMatchView(APIView):
                 {'error': 'Failed to get bond information'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        # Format the remaining term for better display
+        if 'remaining_term' in bond_info:
+            remaining_term = Decimal(bond_info['remaining_term'])
+            # For bonds with less than 1 year remaining, display in days
+            if remaining_term < 1.0:
+                # Check if we already have a remaining_days field
+                if 'remaining_days' in bond_info:
+                    bond_info['remaining_term'] = bond_info['remaining_days']
+                else:
+                    # Calculate and display in days
+                    days = int(float(remaining_term) * 365)
+                    bond_info['remaining_term'] = f"{days}日"
+            else:
+                # Display in years
+                bond_info['remaining_term'] = f"{remaining_term}年"
 
         # Find potential buyers based on issuer
         issuer_name = bond_info['issuer']
 
-        # Query funds that have previously held bonds from the same issuer
-        potential_buyers = BondHolding.objects.filter(
-            bond__issuer__issuer_name=issuer_name
-        ).select_related('fund', 'fund__fund_company').distinct()
+        # Query for bond holdings from both funds and companies directly
+        # First get bonds from the same issuer
+        issuer_bonds = Bond.objects.filter(issuer__issuer_name=issuer_name).values_list('id', flat=True)
+        
+        # Then find holdings of these bonds
+        fund_holdings = BondHolding.objects.filter(
+            bond__id__in=issuer_bonds,
+            fund__isnull=False
+        ).select_related('fund', 'fund__fund_company').distinct('fund')
+        
+        company_holdings = BondHolding.objects.filter(
+            bond__id__in=issuer_bonds,
+            company__isnull=False
+        ).select_related('company').distinct('company')
 
         # Format the results
         results = []
-        for holding in potential_buyers:
+        
+        # Process fund holdings
+        for holding in fund_holdings:
             # Get all persons (fund managers and traders) for this fund
             persons = Person.objects.filter(fund=holding.fund).values(
-                'name', 'role', 'phone', 'email'
+                'name', 'role', 'phone', 'mobile', 'email', 'is_leader', 'qq', 'qt', 'wechat'
             )
             
-            # Get primary fund manager's contact info
-            primary_manager = persons.filter(is_primary=True).first()
+            # Get primary contact for this fund
+            primary_contact = persons.filter(is_primary=True).first()
             
             result = {
+                'entity_type': 'fund',
                 'company_name': holding.fund.fund_company.company_name,
+                'company_type': holding.fund.fund_company.get_company_type_display(),
                 'fund_name': holding.fund.fund_name,
                 'fund_manager': holding.fund.fund_manager,
-                'primary_manager_contact': {
-                    'phone': primary_manager.get('phone') if primary_manager else None,
-                    'email': primary_manager.get('email') if primary_manager else None
-                } if primary_manager else None,
+                'primary_contact': primary_contact if primary_contact else None,
+                'all_contacts': list(persons)
+            }
+            results.append(result)
+        
+        # Process company direct holdings
+        for holding in company_holdings:
+            # Get all persons for this company
+            persons = Person.objects.filter(company=holding.company).values(
+                'name', 'role', 'phone', 'mobile', 'email', 'is_leader', 'qq', 'qt', 'wechat'
+            )
+            
+            # Get primary contact (prioritize leaders)
+            primary_contact = persons.filter(is_primary=True).first()
+            if not primary_contact:
+                # If no primary contact, try to find a leader
+                primary_contact = persons.filter(is_leader=True).first()
+            
+            result = {
+                'entity_type': 'company',
+                'company_name': holding.company.company_name,
+                'company_type': holding.company.get_company_type_display(),
+                'fund_name': None,  # No fund for direct company holdings
+                'fund_manager': None,
+                'primary_contact': primary_contact if primary_contact else None,
                 'all_contacts': list(persons)
             }
             results.append(result)
 
-        # Save search history (only bond code)
+        # Save search history with more details
         SearchHistory.objects.create(
             user=request.user,
-            bond_code=bond_code
+            query=bond_code,
+            bond_code=bond_code,
+            bond_name=bond_info.get('bond_name', ''),
+            result_count=len(results)
         )
 
         if not results:
@@ -187,12 +241,15 @@ class SearchHistoryView(APIView):
     def get(self, request):
         history = SearchHistory.objects.filter(
             user=request.user
-        ).order_by('-search_date')[:10]  # Get last 10 searches
+        ).order_by('-search_date')[:20]  # Get last 20 searches
 
         results = []
         for entry in history:
             results.append({
+                'query': entry.query,
                 'bond_code': entry.bond_code,
+                'bond_name': entry.bond_name,
+                'result_count': entry.result_count,
                 'search_date': entry.search_date.strftime('%Y-%m-%d %H:%M:%S')
             })
 
@@ -346,10 +403,10 @@ class BondSearchView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Search for bonds by code, attributes containing name, or issuer name
+        # Search for bonds by code, name, or issuer name
         bonds = Bond.objects.filter(
             Q(bond_code__icontains=query) | 
-            Q(other_attributes__icontains=query) | 
+            Q(bond_name__icontains=query) | 
             Q(issuer__issuer_name__icontains=query)
         ).select_related('issuer')[:50]  # Limit to 50 results
 
@@ -360,37 +417,72 @@ class BondSearchView(APIView):
         # Format the results
         results = []
         for bond in bonds:
-            # Extract bond name from other_attributes if available
-            bond_name = "Unknown"
-            if bond.other_attributes and "Name:" in bond.other_attributes:
-                try:
-                    bond_name = bond.other_attributes.split("Name:")[1].strip()
-                except:
-                    pass
+            # Add logging to see what's in the bond object
+            print(f"Bond: {bond.id}, Code: {bond.bond_code}, Name: {bond.bond_name}, Term: {bond.remaining_term}")
+            
+            # If bond_name is empty or just a default "Bond X", try to get it from the Wind service
+            bond_name = bond.bond_name
+            remaining_term = None
+            remaining_term_display = None
+            wind_data = None
+            
+            # Always try to get updated data from Wind service
+            wind_data = get_bond_info_by_code(bond.bond_code)
+            if wind_data:
+                # Update the bond name in the database for future use
+                if wind_data.get('bond_name') and (not bond_name or bond_name.startswith('Bond ')):
+                    bond_name = wind_data['bond_name']
+                    bond.bond_name = bond_name
+                    bond.save(update_fields=['bond_name'])
+                    print(f"Updated bond name from Wind service: {bond_name}")
                 
-            # Extract bond type from other_attributes if available
-            bond_type = "Unknown"
-            if bond.other_attributes and "Bond type:" in bond.other_attributes:
-                try:
-                    bond_type = bond.other_attributes.split("Bond type:")[1].split(",")[0].strip()
-                except:
-                    pass
-                
+                # Always get the remaining term from Wind (it's more up-to-date)
+                if wind_data.get('remaining_term'):
+                    remaining_term = Decimal(wind_data['remaining_term'])
+                    bond.remaining_term = remaining_term
+                    bond.save(update_fields=['remaining_term'])
+                    print(f"Updated remaining term from Wind service: {remaining_term}")
+                    
+                    # For terms less than a year, prefer to show days
+                    if float(remaining_term) < 1.0 and wind_data.get('remaining_days'):
+                        remaining_term_display = wind_data['remaining_days']
+                    else:
+                        # For terms of 1 year or more, show in years
+                        remaining_term_display = f"{remaining_term}年"
+            
+            # If we still don't have a remaining term display from Wind, use what's in the database
+            if not remaining_term_display and bond.remaining_term:
+                remaining_term = bond.remaining_term
+                if float(remaining_term) < 1.0:
+                    # Convert to days for display
+                    days = int(float(remaining_term) * 365)
+                    remaining_term_display = f"{days}日"
+                else:
+                    remaining_term_display = f"{remaining_term}年"
+            
+            # Ensure there's always a display value
+            if not remaining_term_display:
+                remaining_term_display = "未知"
+            
             results.append({
                 'id': bond.id,
                 'bond_code': bond.bond_code,
-                'bond_name': bond_name,
+                'bond_name': bond_name or f"Bond {bond.bond_code}",  # Ensure a default value
                 'issuer': bond.issuer.issuer_name,
-                'coupon_rate': f"{bond.term_years}年",  # Display term years instead of coupon rate
-                'maturity_date': bond.issue_date.strftime('%Y-%m-%d')
+                'coupon_rate': f"{bond.coupon_rate}" if bond.coupon_rate else f"{bond.term_years}",
+                'maturity_date': bond.maturity_date.strftime('%Y-%m-%d') if bond.maturity_date else bond.issue_date.strftime('%Y-%m-%d'),
+                'remaining_term': remaining_term_display
             })
 
-        # Save search history
+        # Save search history with more details
         SearchHistory.objects.create(
             user=request.user,
-            bond_code=query
+            query=query,
+            result_count=len(results)
         )
 
+        # Add debug response
+        print(f"Returning {len(results)} results. First result: {results[0] if results else 'None'}")
         return Response({'results': results})
 
 class BondDetailView(APIView):

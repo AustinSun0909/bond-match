@@ -1,16 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { login } from '../services/auth';
 import { useAuth } from '../context/AuthContext';
 import './Login.css';
 
 const Login = () => {
+    // Initialize with empty string, will be filled by useEffect
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
     const { login: contextLogin } = useAuth();  // Get login function from context
+
+    // Load the last used username from localStorage
+    useEffect(() => {
+        console.log('Checking for lastUsername in localStorage');
+        const lastUsername = localStorage.getItem('lastUsername');
+        console.log('Last username from localStorage:', lastUsername);
+        if (lastUsername) {
+            setUsername(lastUsername);
+        }
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -23,6 +34,10 @@ const Login = () => {
             
             if (response.access) {
                 console.log('Login successful, tokens received');
+                // Save username to localStorage
+                localStorage.setItem('lastUsername', username);
+                console.log('Saved username to localStorage:', username);
+                
                 // Context login updates the app state
                 contextLogin();
                 navigate('/dashboard');

@@ -24,6 +24,19 @@ export const searchBonds = async (query) => {
   try {
     const axiosInstance = await authAxios();
     const response = await axiosInstance.get(`/bonds/search/?query=${encodeURIComponent(query)}`);
+    
+    // Add debugging to see what's being returned
+    console.log('API response data:', response.data);
+    console.log('Search results:', response.data.results);
+    
+    // Add search to history in backend
+    try {
+      await saveSearchToHistory(query, response.data.results.length);
+    } catch (historyError) {
+      console.error('Failed to save search to history:', historyError);
+      // Continue anyway - we have localStorage backup
+    }
+    
     return response.data.results;
   } catch (error) {
     console.error('Search error details:', error.response || error);
@@ -31,6 +44,20 @@ export const searchBonds = async (query) => {
       throw new Error(error.response.data.error);
     }
     throw new Error('Failed to search bonds');
+  }
+};
+
+// Function to save a search to the history in the backend
+export const saveSearchToHistory = async (query, resultCount = 0) => {
+  try {
+    const axiosInstance = await authAxios();
+    await axiosInstance.post('/search-history/', {
+      query,
+      result_count: resultCount
+    });
+  } catch (error) {
+    console.error('Error saving search to history:', error);
+    throw error;
   }
 };
 
@@ -62,8 +89,19 @@ export const getSearchHistory = async () => {
   try {
     const axiosInstance = await authAxios();
     const response = await axiosInstance.get('/search-history/');
+    
+    // Format the data if needed
+    if (Array.isArray(response.data)) {
+      return response.data.map(item => ({
+        query: item.query,
+        timestamp: item.timestamp || item.created_at, // Handle different field names
+        resultCount: item.result_count || 0
+      }));
+    }
+    
     return response.data;
   } catch (error) {
-    throw new Error('Failed to get search history');
+    console.error('Failed to get search history:', error);
+    throw error;
   }
 }; 

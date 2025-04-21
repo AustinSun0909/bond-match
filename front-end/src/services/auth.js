@@ -12,6 +12,8 @@ export const login = async (username, password) => {
   if (response.data.access) {
     localStorage.setItem('token', response.data.access);
     localStorage.setItem('refreshToken', response.data.refresh);
+    // Store the username for future use
+    localStorage.setItem('lastUsername', username);
     
     // Log for debugging
     console.log('Tokens stored:', { 
@@ -89,16 +91,46 @@ export const logout = () => {
 
 export const getCurrentUser = () => {
   const token = localStorage.getItem('token');
-  if (!token) return null;
+  if (!token) {
+    console.warn('getCurrentUser: No token found in localStorage');
+    return null;
+  }
 
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
+    // Verify token format
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      console.error('getCurrentUser: Invalid token format');
+      return null;
+    }
+
+    // Decode token payload
+    const payload = JSON.parse(atob(parts[1]));
+    console.log('getCurrentUser: Decoded token payload:', payload);
+    
+    // Check if token contains user_id and username
+    if (!payload.user_id && !payload.username) {
+      console.warn('getCurrentUser: Token payload missing user information');
+      // Try fallback to stored username
+      const lastUsername = localStorage.getItem('lastUsername');
+      if (lastUsername) {
+        console.log('getCurrentUser: Using fallback username from localStorage');
+        return {
+          username: lastUsername
+        };
+      }
+      return null;
+    }
+    
     return {
       id: payload.user_id,
-      username: payload.username
+      username: payload.username || localStorage.getItem('lastUsername')
     };
   } catch (error) {
-    return null;
+    console.error('getCurrentUser: Error decoding token:', error);
+    // Try fallback to stored username on error
+    const lastUsername = localStorage.getItem('lastUsername');
+    return lastUsername ? { username: lastUsername } : null;
   }
 };
 
